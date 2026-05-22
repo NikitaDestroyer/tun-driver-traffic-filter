@@ -2,6 +2,8 @@
 #define TUN_IFACE_H
 
 #include <stddef.h>
+#include <stdint.h>
+#include <sys/types.h>
 
 #define TUN_NAME_DEFAULT "tun0"
 #define TUN_IP_DEFAULT   "10.0.0.1"
