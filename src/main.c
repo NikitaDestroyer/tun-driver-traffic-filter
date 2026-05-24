@@ -15,12 +15,22 @@
 
 static volatile sig_atomic_t g_running = 1;
 
+/**
+ * Обработчик SIGINT/SIGTERM — запрашивает штатное завершение главного цикла.
+ *
+ * @param sig  Номер сигнала (не используется).
+ */
 static void on_signal(int sig)
 {
     (void)sig;
     g_running = 0;
 }
 
+/**
+ * Выводит справку по параметрам командной строки в stderr.
+ *
+ * @param prog  Имя программы (argv[0]).
+ */
 static void usage(const char *prog)
 {
     fprintf(stderr,
@@ -30,6 +40,16 @@ static void usage(const char *prog)
             prog);
 }
 
+/**
+ * Точка входа TUN-демона.
+ *
+ * Инициализирует фильтр, очередь логов и TUN-интерфейс, затем в цикле
+ * читает IP-пакеты, парсит, фильтрует и записывает разрешённые обратно в TUN.
+ *
+ * @param argc  Количество аргументов.
+ * @param argv  Аргументы: -c config, -l logfile, -i tun_name.
+ * @return 0 при успехе, 1 при ошибке инициализации или отсутствии root.
+ */
 int main(int argc, char **argv)
 {
     const char *config = "config/rules.conf";

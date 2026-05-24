@@ -61,6 +61,12 @@ static bool block_icmp = true;
 module_param(block_icmp, bool, 0644);
 MODULE_PARM_DESC(block_icmp, "Drop ICMP in netfilter hook (no printk)");
 
+/**
+ * Возвращает человекочитаемое имя VPN-сигнатуры.
+ *
+ * @param v  Идентификатор VPN (enum vpn_sig).
+ * @return Строка "WireGuard", "OpenVPN", "IKE/IPsec" или "unknown".
+ */
 static const char *vpn_name(enum vpn_sig v)
 {
 	switch (v) {
@@ -71,6 +77,11 @@ static const char *vpn_name(enum vpn_sig v)
 	}
 }
 
+/**
+ * Обработчик workqueue: единственное место вызова printk для VPN-событий.
+ *
+ * @param work  Указатель на work_struct (не используется).
+ */
 static void log_work_handler(struct work_struct *work)
 {
 	struct log_event evt;
@@ -91,6 +102,16 @@ static void log_work_handler(struct work_struct *work)
 	       vpn_name(vpn), evt.src, evt.sport, evt.dst, evt.dport, evt.proto);
 }
 
+/**
+ * Сохраняет событие VPN и планирует отложенный вывод в dmesg (без printk в hook).
+ *
+ * @param vpn         Тип обнаруженного VPN.
+ * @param saddr       IPv4 источника (network byte order).
+ * @param daddr       IPv4 назначения.
+ * @param sport       Порт источника (host order).
+ * @param dport       Порт назначения (host order).
+ * @param proto       Строка протокола ("TCP", "UDP").
+ */
 static void schedule_vpn_log(enum vpn_sig vpn, __be32 saddr, __be32 daddr,
 			     u16 sport, u16 dport, const char *proto)
 {
@@ -107,6 +128,17 @@ static void schedule_vpn_log(enum vpn_sig vpn, __be32 saddr, __be32 daddr,
 		schedule_work(&log_work);
 }
 
+/**
+ * Ищет 5-кортежное соединение в таблице или добавляет новую запись.
+ *
+ * @param saddr     IP источника.
+ * @param daddr     IP назначения.
+ * @param sport     Порт источника (network byte order).
+ * @param dport     Порт назначения.
+ * @param protocol  Номер IP-протокола.
+ * @param is_new    Выход: 1 если запись создана впервые, 0 если уже была.
+ * @return 0 (ошибок нет; при переполнении перезаписывается слот 0).
+ */
 static int conn_find_or_add(__be32 saddr, __be32 daddr, __be16 sport,
 			    __be16 dport, u8 protocol, int *is_new)
 {
@@ -144,6 +176,16 @@ static int conn_find_or_add(__be32 saddr, __be32 daddr, __be16 sport,
 	return 0;
 }
 
+/**
+ * Эвристическое определение VPN по протоколу, портам и UDP payload.
+ *
+ * @param protocol     IPPROTO_TCP или IPPROTO_UDP.
+ * @param sport        Порт источника (host order).
+ * @param dport        Порт назначения.
+ * @param payload      Указатель на UDP payload или NULL для TCP.
+ * @param payload_len  Длина payload в байтах.
+ * @return VPN_WIREGUARD, VPN_OPENVPN, VPN_IKE_IPSEC или VPN_NONE.
+ */
 static enum vpn_sig detect_vpn(u8 protocol, u16 sport, u16 dport,
 			       const u8 *payload, int payload_len)
 {
@@ -171,6 +213,12 @@ static enum vpn_sig detect_vpn(u8 protocol, u16 sport, u16 dport,
 	return VPN_NONE;
 }
 
+/**
+ * Преобразует номер IP-протокола в строку для лога.
+ *
+ * @param p  IPPROTO_TCP, IPPROTO_UDP или IPPROTO_ICMP.
+ * @return "TCP", "UDP", "ICMP" или "OTHER".
+ */
 static const char *proto_str(u8 p)
 {
 	if (p == IPPROTO_TCP)
@@ -182,6 +230,14 @@ static const char *proto_str(u8 p)
 	return "OTHER";
 }
 
+/**
+ * Netfilter hook: фильтрация ICMP, детект VPN, планирование лога без printk.
+ *
+ * @param priv   Приватные данные hook (не используются).
+ * @param skb    Socket buffer с IPv4-пакетом.
+ * @param state  Состояние Netfilter (не используется).
+ * @return NF_ACCEPT или NF_DROP (только для ICMP при block_icmp).
+ */
 static unsigned int tun_vpn_hook(void *priv, struct sk_buff *skb,
 				 const struct nf_hook_state *state)
 {
@@ -271,6 +327,11 @@ static struct nf_hook_ops nf_ops[] = {
 	},
 };
 
+/**
+ * Инициализация модуля: workqueue, регистрация Netfilter hooks.
+ *
+ * @return 0 при успехе, отрицательный код ошибки ядра при сбое регистрации.
+ */
 static int __init tun_vpn_init(void)
 {
 	int ret;
@@ -288,6 +349,9 @@ static int __init tun_vpn_init(void)
 	return 0;
 }
 
+/**
+ * Выгрузка модуля: отмена work, снятие Netfilter hooks.
+ */
 static void __exit tun_vpn_exit(void)
 {
 	cancel_work_sync(&log_work);

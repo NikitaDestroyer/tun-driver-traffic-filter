@@ -24,6 +24,12 @@ static struct {
     FILE *fp;
 } g_log;
 
+/**
+ * Возвращает строковое имя IP-протокола для лога.
+ *
+ * @param p  Номер протокола (6, 17, 1).
+ * @return "TCP", "UDP", "ICMP" или "OTHER".
+ */
 static const char *proto_name(uint8_t p)
 {
     switch (p) {
@@ -34,6 +40,12 @@ static const char *proto_name(uint8_t p)
     }
 }
 
+/**
+ * Фоновый поток: извлекает события из очереди и пишет в файл и stderr.
+ *
+ * @param arg  Не используется.
+ * @return NULL.
+ */
 static void *log_worker(void *arg)
 {
     (void)arg;
@@ -74,6 +86,7 @@ static void *log_worker(void *arg)
     return NULL;
 }
 
+/* См. объявление в log_queue.h */
 int log_queue_init(const char *log_path)
 {
     memset(&g_log, 0, sizeof(g_log));
@@ -86,6 +99,7 @@ int log_queue_init(const char *log_path)
     return 0;
 }
 
+/* См. объявление в log_queue.h */
 void log_queue_shutdown(void)
 {
     pthread_mutex_lock(&g_log.mu);
@@ -99,6 +113,7 @@ void log_queue_shutdown(void)
     pthread_cond_destroy(&g_log.not_empty);
 }
 
+/* См. объявление в log_queue.h */
 void log_queue_push(log_event_kind_t kind, const parsed_packet_t *pkt,
                     const char *rule_name)
 {

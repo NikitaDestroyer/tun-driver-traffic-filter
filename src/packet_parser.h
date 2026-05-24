@@ -7,6 +7,7 @@
 #define PARSED_IP_STR_LEN 16
 #define PARSED_TS_LEN     24
 
+/** Результат разбора IPv4-пакета (TCP/UDP/ICMP). */
 typedef struct {
     uint32_t src_ip;
     uint32_t dst_ip;
@@ -21,6 +22,16 @@ typedef struct {
     int      valid;
 } parsed_packet_t;
 
+/**
+ * Разбирает raw IPv4-буфер и заполняет parsed_packet_t.
+ *
+ * Поддерживаются TCP, UDP и ICMP. IPv6 и неизвестные протоколы отклоняются.
+ *
+ * @param buf  Указатель на начало IP-пакета.
+ * @param len  Длина буфера в байтах.
+ * @param out  Выходная структура; при успехе out->valid = 1.
+ * @return 0 при успешном разборе, -1 если пакет слишком короткий или не IPv4/L4.
+ */
 int packet_parse(const uint8_t *buf, size_t len, parsed_packet_t *out);
 
 #endif

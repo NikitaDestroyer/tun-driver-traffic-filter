@@ -28,16 +28,23 @@ struct filter_engine {
     int count;
 };
 
+/* См. объявление в filter.h */
 filter_engine_t *filter_create(void)
 {
     return calloc(1, sizeof(filter_engine_t));
 }
 
+/* См. объявление в filter.h */
 void filter_destroy(filter_engine_t *fe)
 {
     free(fe);
 }
 
+/**
+ * Удаляет ведущие и завершающие пробельные символы in-place.
+ *
+ * @param s  Строка для обрезки.
+ */
 static void trim(char *s)
 {
     while (*s && isspace((unsigned char)*s))
@@ -47,6 +54,13 @@ static void trim(char *s)
         s[--n] = '\0';
 }
 
+/**
+ * Преобразует имя протокола (TCP/UDP/ICMP) в номер IP-протокола.
+ *
+ * @param s    Строка протокола (без учёта регистра).
+ * @param out  Выход: 6, 17 или 1.
+ * @return 0 при успехе, -1 для неизвестного имени.
+ */
 static int parse_proto(const char *s, uint8_t *out)
 {
     if (!strcasecmp(s, "TCP")) { *out = 6; return 0; }
@@ -55,6 +69,7 @@ static int parse_proto(const char *s, uint8_t *out)
     return -1;
 }
 
+/* См. объявление в filter.h */
 int filter_load_file(filter_engine_t *fe, const char *path)
 {
     FILE *f = fopen(path, "r");
@@ -100,6 +115,7 @@ int filter_load_file(filter_engine_t *fe, const char *path)
     return 0;
 }
 
+/* См. объявление в filter.h */
 filter_action_t filter_apply(filter_engine_t *fe, const parsed_packet_t *pkt,
                             char *rule_name, size_t rule_name_len)
 {

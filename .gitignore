@@ -7,3 +7,4 @@ build/
 .modules.order
 Module.symvers
 .tmp_versions/
+REPORT_ON_MODULES.md

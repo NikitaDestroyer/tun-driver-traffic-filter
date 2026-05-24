@@ -9,6 +9,7 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
+/* См. объявление в tun_iface.h */
 int tun_create(tun_device_t *dev, const char *name)
 {
     memset(dev, 0, sizeof(*dev));
@@ -33,6 +34,7 @@ int tun_create(tun_device_t *dev, const char *name)
     return 0;
 }
 
+/* См. объявление в tun_iface.h */
 void tun_close(tun_device_t *dev)
 {
     if (dev->fd >= 0)
@@ -40,11 +42,13 @@ void tun_close(tun_device_t *dev)
     dev->fd = -1;
 }
 
+/* См. объявление в tun_iface.h */
 ssize_t tun_read_packet(tun_device_t *dev, uint8_t *buf, size_t buflen)
 {
     return read(dev->fd, buf, buflen);
 }
 
+/* См. объявление в tun_iface.h */
 ssize_t tun_write_packet(tun_device_t *dev, const uint8_t *buf, size_t len)
 {
     return write(dev->fd, buf, len);

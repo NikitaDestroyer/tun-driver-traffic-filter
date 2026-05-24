@@ -9,6 +9,12 @@
 #include <string.h>
 #include <time.h>
 
+/**
+ * Формирует строку текущего локального времени (YYYY-MM-DD HH:MM:SS).
+ *
+ * @param buf     Буфер для записи.
+ * @param buflen  Размер буфера.
+ */
 static void format_ts(char *buf, size_t buflen)
 {
     time_t now = time(NULL);
@@ -17,6 +23,7 @@ static void format_ts(char *buf, size_t buflen)
     strftime(buf, buflen, "%Y-%m-%d %H:%M:%S", &tm);
 }
 
+/* См. объявление в packet_parser.h */
 int packet_parse(const uint8_t *buf, size_t len, parsed_packet_t *out)
 {
     memset(out, 0, sizeof(*out));
