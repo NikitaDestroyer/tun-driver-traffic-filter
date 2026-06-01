@@ -15,53 +15,36 @@
 
 static volatile sig_atomic_t g_running = 1;
 
-/**
- * Обработчик SIGINT/SIGTERM — запрашивает штатное завершение главного цикла.
- *
- * @param sig  Номер сигнала (не используется).
- */
 static void on_signal(int sig)
 {
     (void)sig;
     g_running = 0;
 }
 
-/**
- * Выводит справку по параметрам командной строки в stderr.
- *
- * @param prog  Имя программы (argv[0]).
- */
 static void usage(const char *prog)
 {
     fprintf(stderr,
-            "Usage: %s [-c rules.conf] [-l logfile] [-i tun_name]\n"
-            "  TUN-демон: чтение IP-пакетов, фильтрация, отложенный лог.\n"
-            "  VPN-детект в ядре: загрузите tun_vpn_detect.ko (make load-kmod)\n",
+            "Usage: %s [-c rules.conf] [-l logfile] [-i tun_name] [-q]\n"
+            "  TUN-демон: перехват IP через tun0, фильтрация, отложенный лог.\n"
+            "  VPN в ядре: tun_vpn_detect.ko (scripts/start.sh)\n"
+            "  -q  логировать только BLOCK\n",
             prog);
 }
 
-/**
- * Точка входа TUN-демона.
- *
- * Инициализирует фильтр, очередь логов и TUN-интерфейс, затем в цикле
- * читает IP-пакеты, парсит, фильтрует и записывает разрешённые обратно в TUN.
- *
- * @param argc  Количество аргументов.
- * @param argv  Аргументы: -c config, -l logfile, -i tun_name.
- * @return 0 при успехе, 1 при ошибке инициализации или отсутствии root.
- */
 int main(int argc, char **argv)
 {
     const char *config = "config/rules.conf";
     const char *logpath = "/tmp/tund.log";
     const char *tun_name = TUN_NAME_DEFAULT;
+    int quiet = 0;
 
     int opt;
-    while ((opt = getopt(argc, argv, "c:l:i:h")) != -1) {
+    while ((opt = getopt(argc, argv, "c:l:i:qh")) != -1) {
         switch (opt) {
         case 'c': config = optarg; break;
         case 'l': logpath = optarg; break;
         case 'i': tun_name = optarg; break;
+        case 'q': quiet = 1; break;
         default: usage(argv[0]); return 1;
         }
     }
@@ -87,6 +70,7 @@ int main(int argc, char **argv)
         filter_destroy(fe);
         return 1;
     }
+    log_queue_set_quiet(quiet);
 
     tun_device_t tun;
     int rc = tun_create(&tun, tun_name);
@@ -98,12 +82,12 @@ int main(int argc, char **argv)
     }
 
     fprintf(stderr,
-            "tund: интерфейс %s (fd=%d). Настройте IP: scripts/setup_tun.sh\n"
-            "      Лог: %s. Ядро: sudo dmesg -w\n",
+            "tund: интерфейс %s (fd=%d). Lab: scripts/setup_lab.sh\n"
+            "      Лог: %s. Ядро: dmesg | grep tun_vpn_detect\n",
             tun.name, tun.fd, logpath);
 
     uint8_t buf[PACKET_BUF];
-    unsigned long accepted = 0, dropped = 0;
+    unsigned long accepted = 0, dropped = 0, bytes_in = 0, parse_skip = 0;
 
     while (g_running) {
         ssize_t n = tun_read_packet(&tun, buf, sizeof(buf));
@@ -116,12 +100,17 @@ int main(int argc, char **argv)
         if (n == 0)
             continue;
 
+        bytes_in += (unsigned long)n;
+
         parsed_packet_t pkt;
-        if (packet_parse(buf, (size_t)n, &pkt) != 0)
+        if (packet_parse(buf, (size_t)n, &pkt) != 0) {
+            parse_skip++;
             continue;
+        }
 
         char rule_name[48] = "";
-        filter_action_t action = filter_apply(fe, &pkt, rule_name, sizeof(rule_name));
+        filter_action_t action = filter_apply(fe, &pkt, rule_name,
+                                              sizeof(rule_name), NULL);
 
         if (action == FILTER_DROP) {
             dropped++;
@@ -137,7 +126,18 @@ int main(int argc, char **argv)
         log_queue_push(LOG_EVT_ACCEPT, &pkt, "");
     }
 
-    fprintf(stderr, "Статистика: accept=%lu drop=%lu\n", accepted, dropped);
+    fprintf(stderr,
+            "Статистика: accept=%lu drop=%lu bytes_in=%lu parse_skip=%lu "
+            "log_dropped=%lu\n",
+            accepted, dropped, bytes_in, parse_skip, log_queue_dropped());
+
+    for (int i = 0; i < filter_rule_count(fe); i++) {
+        char rname[48];
+        if (filter_rule_name(fe, i, rname, sizeof(rname)) == 0 &&
+            filter_rule_hits(fe, i) > 0)
+            fprintf(stderr, "  rule[%d] %s hits=%lu\n",
+                    i, rname, filter_rule_hits(fe, i));
+    }
 
     tun_close(&tun);
     log_queue_shutdown();

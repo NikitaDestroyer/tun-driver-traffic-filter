@@ -16,7 +16,7 @@ USERSPACE_SRCS := \
 KERNEL_DIR := kernel
 KMOD_NAME  := tun_vpn_detect
 
-.PHONY: all clean load-kmod unload-kmod
+.PHONY: all clean load-kmod unload-kmod start stop test
 
 all: $(BUILD_DIR)/tund $(BUILD_DIR)/$(KMOD_NAME).ko
 
@@ -37,6 +37,15 @@ load-kmod:
 unload-kmod:
 	-sudo rmmod $(KMOD_NAME)
 
+start:
+	sudo ./scripts/start.sh
+
+stop:
+	sudo ./scripts/stop.sh
+
+test:
+	sudo ./scripts/test_all.sh
+
 clean:
 	rm -rf $(BUILD_DIR)
-	-$(MAKE) -C /lib/modules/$(shell uname -r)/build M=$(CURDIR)/$(BUILD_DIR) clean 2>/dev/null
+	-$(MAKE) -C /lib/modules/$(shell uname -r)/build M=$(CURDIR)/$(KERNEL_DIR) clean 2>/dev/null

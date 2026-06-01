@@ -45,14 +45,28 @@ int packet_parse(const uint8_t *buf, size_t len, parsed_packet_t *out)
     out->protocol = ip->protocol;
     out->total_len = ntohs(ip->tot_len);
 
+    if (out->total_len > len)
+        return -1;
+
+    if (ntohs(ip->frag_off) & (IP_MF | IP_OFFMASK))
+        out->frag = 1;
+
     inet_ntop(AF_INET, &ip->saddr, out->src_ip_str, sizeof(out->src_ip_str));
     inet_ntop(AF_INET, &ip->daddr, out->dst_ip_str, sizeof(out->dst_ip_str));
+
+    if (out->frag)
+        return -1;
 
     const uint8_t *l4 = buf + ip_hdr_len;
     size_t l4_len = len - ip_hdr_len;
 
     if (ip->protocol == IPPROTO_TCP && l4_len >= sizeof(struct tcphdr)) {
         const struct tcphdr *tcp = (const struct tcphdr *)l4;
+        size_t tcp_hdr_len = (size_t)tcp->doff * 4;
+
+        if (tcp->doff < 5 || tcp_hdr_len > l4_len)
+            return -1;
+
         out->src_port = ntohs(tcp->source);
         out->dst_port = ntohs(tcp->dest);
         out->tcp_flags = tcp->fin | (tcp->syn << 1) | (tcp->rst << 2) |

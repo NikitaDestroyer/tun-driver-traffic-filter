@@ -34,4 +34,16 @@ void log_queue_shutdown(void);
 void log_queue_push(log_event_kind_t kind, const parsed_packet_t *pkt,
                     const char *rule_name);
 
+/**
+ * Число событий, отброшенных из-за переполнения очереди.
+ */
+unsigned long log_queue_dropped(void);
+
+/**
+ * Включает режим «только DROP» (не логировать ACCEPT).
+ *
+ * @param quiet  1 — только BLOCK, 0 — все события.
+ */
+void log_queue_set_quiet(int quiet);
+
 #endif

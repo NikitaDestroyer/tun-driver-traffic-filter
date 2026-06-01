@@ -21,6 +21,8 @@ static struct {
     pthread_cond_t not_empty;
     pthread_t thread;
     int running;
+    int quiet;
+    unsigned long dropped;
     FILE *fp;
 } g_log;
 
@@ -63,6 +65,9 @@ static void *log_worker(void *arg)
         g_log.head = (g_log.head + 1) % LOG_QUEUE_CAP;
         g_log.count--;
         pthread_mutex_unlock(&g_log.mu);
+
+        if (item.kind == LOG_EVT_ACCEPT && g_log.quiet)
+            continue;
 
         const char *action = item.kind == LOG_EVT_DROP ? "BLOCK" : "ACCEPT";
         const char *rule = item.rule_name[0] ? item.rule_name : "-";
@@ -119,6 +124,7 @@ void log_queue_push(log_event_kind_t kind, const parsed_packet_t *pkt,
 {
     pthread_mutex_lock(&g_log.mu);
     if (g_log.count >= LOG_QUEUE_CAP) {
+        g_log.dropped++;
         pthread_mutex_unlock(&g_log.mu);
         return;
     }
@@ -132,5 +138,21 @@ void log_queue_push(log_event_kind_t kind, const parsed_packet_t *pkt,
     g_log.tail = (g_log.tail + 1) % LOG_QUEUE_CAP;
     g_log.count++;
     pthread_cond_signal(&g_log.not_empty);
+    pthread_mutex_unlock(&g_log.mu);
+}
+
+unsigned long log_queue_dropped(void)
+{
+    unsigned long n;
+    pthread_mutex_lock(&g_log.mu);
+    n = g_log.dropped;
+    pthread_mutex_unlock(&g_log.mu);
+    return n;
+}
+
+void log_queue_set_quiet(int quiet)
+{
+    pthread_mutex_lock(&g_log.mu);
+    g_log.quiet = quiet ? 1 : 0;
     pthread_mutex_unlock(&g_log.mu);
 }

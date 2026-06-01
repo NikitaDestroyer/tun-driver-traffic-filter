@@ -20,6 +20,7 @@ typedef struct {
     char     dst_ip_str[PARSED_IP_STR_LEN];
     char     timestamp[PARSED_TS_LEN];
     int      valid;
+    int      frag;   /* 1 если IPv4 fragment (не анализируем L4) */
 } parsed_packet_t;
 
 /**
