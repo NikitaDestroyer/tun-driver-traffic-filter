@@ -24,6 +24,7 @@
 #include <linux/string.h>
 #include <linux/if.h>
 #include <linux/netdevice.h>
+#include <linux/inet.h>
 
 #include "vpn_signatures.h"
 

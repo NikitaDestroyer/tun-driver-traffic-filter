@@ -11,7 +11,7 @@
 typedef struct {
     log_event_kind_t kind;
     parsed_packet_t pkt;
-    char rule_name[48];
+    char rule_name[80];
 } log_item_t;
 
 static struct {

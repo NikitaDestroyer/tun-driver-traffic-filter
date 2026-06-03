@@ -7,7 +7,7 @@
 #include <string.h>
 
 #define MAX_RULES 32
-#define RULE_NAME_LEN 48
+#define RULE_NAME_LEN 80
 
 typedef enum {
     RULE_BLOCK_PROTO,

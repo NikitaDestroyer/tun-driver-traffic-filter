@@ -108,7 +108,7 @@ int main(int argc, char **argv)
             continue;
         }
 
-        char rule_name[48] = "";
+        char rule_name[80] = "";
         filter_action_t action = filter_apply(fe, &pkt, rule_name,
                                               sizeof(rule_name), NULL);
 
@@ -132,7 +132,7 @@ int main(int argc, char **argv)
             accepted, dropped, bytes_in, parse_skip, log_queue_dropped());
 
     for (int i = 0; i < filter_rule_count(fe); i++) {
-        char rname[48];
+        char rname[80];
         if (filter_rule_name(fe, i, rname, sizeof(rname)) == 0 &&
             filter_rule_hits(fe, i) > 0)
             fprintf(stderr, "  rule[%d] %s hits=%lu\n",
