@@ -26,6 +26,7 @@ fi
 "$ROOT/scripts/teardown_lab.sh" 2>/dev/null || true
 
 echo "=== Создание veth и netns $CLIENT_NS ==="
+ip netns add "$CLIENT_NS"
 ip link add "$VETH_H" type veth peer name "$VETH_C"
 ip link set "$VETH_C" netns "$CLIENT_NS"
 
@@ -37,8 +38,9 @@ ip netns exec "$CLIENT_NS" ip link set "$VETH_C" up
 ip netns exec "$CLIENT_NS" ip link set lo up
 
 # Маршрут клиента: вся lab-сеть через veth-h (шлюз 10.0.0.254)
-ip netns exec "$CLIENT_NS" ip route add "${TUN_IP}/32" via "$HOST_VETH_IP" 2>/dev/null || \
+if ! ip netns exec "$CLIENT_NS" ip route add "${TUN_IP}/32" via "$HOST_VETH_IP" 2>/dev/null; then
 	ip netns exec "$CLIENT_NS" ip route replace "${TUN_IP}/32" via "$HOST_VETH_IP"
+fi
 
 # На хосте: трафик к клиенту через tun0 (после того как tund поднимет интерфейс)
 ip route replace "${CLIENT_IP}/32" dev "$IFACE" 2>/dev/null || true
