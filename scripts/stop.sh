@@ -12,14 +12,18 @@ if [[ "$(id -u)" -ne 0 ]]; then
 	exit 1
 fi
 
-if [[ -f "$PIDFILE" ]]; then
-	pid="$(cat "$PIDFILE")"
-	if kill -0 "$pid" 2>/dev/null; then
+stop_tund() {
+	local pid
+	for pid in $(pgrep -x tund 2>/dev/null || true); do
 		kill "$pid" 2>/dev/null || true
-		wait "$pid" 2>/dev/null || true
-	fi
+	done
 	rm -f "$PIDFILE"
-fi
+	sleep 0.5
+	for pid in $(pgrep -x tund 2>/dev/null || true); do
+		kill -9 "$pid" 2>/dev/null || true
+	done
+}
+stop_tund
 
 rmmod tun_vpn_detect 2>/dev/null || true
 "$ROOT/scripts/teardown_lab.sh" 2>/dev/null || true

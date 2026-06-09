@@ -11,6 +11,7 @@
 make
 sudo ./scripts/start.sh          # lab + tund + kernel module
 sudo ./scripts/test_all.sh       # автопроверка
+sudo ./scripts/demo_traffic.sh   # демо: ICMP/UDP/TCP + 3 VPN
 sudo dmesg | grep tun_vpn_detect # VPN-события
 sudo ./scripts/stop.sh
 ```

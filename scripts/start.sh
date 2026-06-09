@@ -19,17 +19,31 @@ cd "$ROOT"
 make -s
 
 echo "=== tund (создаёт $IFACE) ==="
-if [[ -f "$PIDFILE" ]] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+# Живой процесс по имени (pidfile может устареть после неудачного старта)
+running_pid="$(pgrep -x tund 2>/dev/null | head -1 || true)"
+if [[ -n "$running_pid" ]]; then
+	echo "$running_pid" > "$PIDFILE"
+	echo "tund уже запущен (pid $running_pid)"
+elif [[ -f "$PIDFILE" ]] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
 	echo "tund уже запущен (pid $(cat "$PIDFILE"))"
 else
+	rm -f "$PIDFILE"
+	# tun0 без tund — осиротевший интерфейс после краша
+	if ip link show "$IFACE" &>/dev/null; then
+		ip link delete dev "$IFACE" 2>/dev/null || \
+			"$ROOT/scripts/teardown_tun.sh" "$IFACE" || true
+	fi
 	: > "$LOGFILE"
+	: > /tmp/tund.stderr
 	nohup "$BUILD/tund" -c "$RULES" -l "$LOGFILE" -i "$IFACE" -q \
-		>> /tmp/tund.stderr 2>&1 &
+		>/tmp/tund.stderr 2>&1 &
 	echo $! > "$PIDFILE"
 	sleep 1
 	if ! kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+		rm -f "$PIDFILE"
 		echo "Ошибка запуска tund, см. /tmp/tund.stderr" >&2
 		cat /tmp/tund.stderr 2>/dev/null || true
+		echo "Подсказка: sudo $ROOT/scripts/stop.sh  (остановить старый tund)" >&2
 		exit 1
 	fi
 	echo "tund pid=$(cat "$PIDFILE"), log=$LOGFILE"

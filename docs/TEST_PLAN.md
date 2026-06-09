@@ -44,19 +44,27 @@ tun_vpn_detect: NEW VPN [WireGuard] 10.0.0.2:... -> 10.0.0.1:51820 proto=UDP
 
 **Важно:** трафик с `tun_lab_client`, не `127.0.0.1` без lab.
 
-## 3. Полный прогон
+## 3. Демонстрация разного трафика
+
+```bash
+sudo ./scripts/demo_traffic.sh
+```
+
+Показывает BLOCK/ACCEPT для ICMP, UDP (53/9999), TCP (22/80) в `/tmp/tund.log` и три типа VPN в `dmesg`. Правила: `config/rules.demo.conf`. После прогона восстанавливает `rules.conf` и `-q`.
+
+## 4. Полный прогон
 
 ```bash
 sudo ./scripts/test_all.sh
 ```
 
-## 4. Остановка
+## 5. Остановка
 
 ```bash
 sudo ./scripts/stop.sh
 ```
 
-## 5. Параметры модуля
+## 6. Параметры модуля
 
 ```bash
 cat /sys/module/tun_vpn_detect/parameters/iface
